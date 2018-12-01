@@ -8,11 +8,8 @@ mongoose.connect('mongodb://mongo:27017/hapidb', { useNewUrlParser: true }).
   then(() => console.log('MongoDB Connected'))
   .catch( err => console.log(err) );
 
-// create Task module (modelName, scheme)
+// create Task module/model (modelName, scheme)
 const Task = mongoose.model('Task', {text: String});
-//const Cat = mongoose.model('Cat', { name: String });
-//const kitty = new Cat({ name: 'Zildjian' });
-//kitty.save().then(() => console.log('meow'));
 
 // init server
 
@@ -46,7 +43,7 @@ const taskHandler = async (request, h) => {
         task: tasks
     });
     /*
-    // this is another example with static data
+    // this is another example with static data, for this don't need async/await
     return h.view('tasks', {
         task: [
           {text: "task 1"},
@@ -57,18 +54,14 @@ const taskHandler = async (request, h) => {
         ]
     });
     */
-
-    // important allways must return something
-    //return tasks;
-
 };
 
 // start Server
 const start = async () => {
   try {
-    // register middlewares
-    // register Vision (template engine helper, with vison we can more template engine type)
-    // register Inert (handle the static files like html/image/mp3/etc)
+    // register middlewares:
+    // - Vision (template engine helper, with vison we can more template engine type)
+    // - Inert (handle the static files like html/image/mp3/etc)
     await server.register(Vision);
     await server.register(Inert);
 
@@ -84,12 +77,12 @@ const start = async () => {
       server.route({ method: 'GET', path: '/tasks', handler: taskHandler });
 
     /*
+    // another way to route but you can use also plugin and declare routes in another file
     server.route([
       {
         method: "GET",
         path: "/api/hello",
         handler: async (request, h) => {
-          console.log('new request');
           return "Hello, World";
         }
       },
@@ -119,6 +112,7 @@ const start = async () => {
       }
     ]);
     */
+    
     // wait till server started
     await server.start();
 
