@@ -13,8 +13,8 @@ NODE_PORT="8000"
 NODE_ENTRY_POINT="/bin/bash"
 
 # settings for MongoDB container
-EXT_DB_DIR="${WORK_DIR}mongoDB/data"
-INT_DB_DIR="/data"
+EXT_DB_DIR="${WORK_DIR}mongoDB/db"
+INT_DB_DIR="/data/db"
 EXT_DB_SHELL="${WORK_DIR}mongoDB/start.sh"
 INT_DB_SHELL="/home/mongo/start.sh"
 DB_CONTAINER_NAME="mongo"
@@ -23,7 +23,7 @@ DB_PORT="27017"
 
 clear
 echo "start mongoDB container..."
-sudo docker run --rm -v ${EXT_DB_DIR}:${INT_DB_DIR} -v ${EXT_DB_SHELL}:${INT_DB_SHELL} -d -it -p ${DB_PORT}:${DB_PORT} --network ${DOCKER_NETWORK} --name ${DB_CONTAINER_NAME} ${DB_IMAGE} ${INT_DB_SHELL}
+sudo docker run --rm -d -v ${EXT_DB_DIR}:${INT_DB_DIR} -v ${EXT_DB_SHELL}:${INT_DB_SHELL} -it -p ${DB_PORT}:${DB_PORT} --network ${DOCKER_NETWORK} --name ${DB_CONTAINER_NAME} ${DB_IMAGE} ${INT_DB_SHELL}
 echo "start nodeJS container..."
 sudo docker run --rm -v ${EXT_NODE_DIR}:${INT_NODE_DIR} -it -p ${NODE_PORT}:${NODE_PORT} --network ${DOCKER_NETWORK} --name ${NODE_CONTAINER_NAME} ${NODE_IMAGE} ${NODE_ENTRY_POINT}
 echo "kill mongoDB container..."
