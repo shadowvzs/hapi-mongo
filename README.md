@@ -1,6 +1,6 @@
 # hapi (nodeJS) container + MongoDB container
 
-## Important steps 
+## Important steps
 
 * You must run download the packages with npm which was used in package.json
     * npm install
@@ -66,4 +66,7 @@
 
 * https://medium.freecodecamp.org/how-to-setup-a-powerful-api-with-nodejs-graphql-mongodb-hapi-and-swagger-e251ac189649
 * https://www.tutorialspoint.com/mongodb/mongodb_environment.htm
-
+* https://mongoosejs.com/
+* https://success.docker.com/article/how-can-i-access-mongodb-container-from-another-container
+* https://github.com/hapijs/vision
+* https://hapijs.com/tutorials/serving-files
