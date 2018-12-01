@@ -1,4 +1,5 @@
-# hapi (nodeJS) container + MongoDB container
+# hapi 17.8 (nodeJS 10.3) container + MongoDB 4.0 container
+
 
 ## Important steps
 
@@ -10,6 +11,7 @@
 
 * you must give permission for start.sh in project root and to mongoDB folder
     * sudo chmod 777 start.sh
+    * ofc also you must have the volume folders
 
 * create entry point or launch manually the nodeJS app (ex. manually)
     * cd /home/project
@@ -23,6 +25,7 @@
         * we need use volume, so our external folder inject into container, so we use ide outside but code will be executed inside, like shared folder
     * only mongoDB (it was pulled from docker repo)
         * we need volume/shared folder for save the data into host machine folder
+            * keep in mind, the host folder will replace the folder from image when you run container !!
         * somehow not let me declare the entrypoint directly so i created a bashfile, mounted and used the .sh like entrypoint
         * first time you need create db, collection, something data for test
 * the 2 container must communicate with eachother, this have more way but we use same network
@@ -41,6 +44,31 @@
 * ping x.y.z.v = need package: iputils-ping
 * sudo docker exec -it mongo /bin/bash = enter into deattached container and use terminal
 * /usr/bin/mongo = enter to mongo console/terminal
+* use **ssh** for check files or transfer between host & docker container
+    * **Note:** if you want keep file permanent in your container then you have more option:
+        * sudo docker commit *containerHash* *imageName* - this create a new image from container current state
+        * use **volume** (-v) when you run your container and file should be stored in host machine
+* copy something out from container:
+    * Docker container:
+        * passwd root = change the password for root
+        * apt-get update = update the repositories
+        * apt-get install nano = my favorite text editor
+        * apt-get install openssh-server = install ssh server
+        * nano /etc/ssh/sshd_config = open ssh config file for editing
+            * change value at *PermitRootLogin* line to yes
+            * save
+        * service ssh restart = restart ssh server so it will use the new config
+        * ip addr show = check your ip (at me useally 172.17.0.2 but not static)
+    * Host machine:
+        * install **winSCP** - https://winscp.net/eng/download.php *(100% compatibile with wine - linux users)*
+        * connect to docker:
+            * host: ip what you got from *ip addr show*
+            * type: *sftp* & port: *22*
+            * username: *root*
+            * password: what you setted with *passwd root*
+    * when you are done then just exit from container, so it will be cleanup changes on container at next container run
+
+
 
 ### Hapi - NodeJS
 * **inert**: used for return static files from filesystem
@@ -64,6 +92,7 @@
 
 *few thing outdated in that guide like happi connection, handle which use mongodb etc but could be a good start*
 
+* https://www.youtube.com/watch?v=2lprC0yYeFw
 * https://medium.freecodecamp.org/how-to-setup-a-powerful-api-with-nodejs-graphql-mongodb-hapi-and-swagger-e251ac189649
 * https://www.tutorialspoint.com/mongodb/mongodb_environment.htm
 * https://mongoosejs.com/

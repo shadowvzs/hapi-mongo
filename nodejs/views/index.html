@@ -1,3 +1,20 @@
-<h1>Hapi + MongoDB</h1>
-<b>title: {{title}}</b>
-<div>message: {{message}}</div>
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>{{title}}</title>
+        <!-- <link rel="stylesheet" href="style.css" type="text/css"/> -->
+    </head>
+    <body>
+      <h1> Hapi & MongoDB </h1>
+      <ul>
+        {{#if userId}}
+        <li><a href="/users">Users</a></li>
+        <li><a href="/tasks">Tasks</a></li>
+        {{else}}
+        <li><a href="/login">Login</a></li>
+        <li><a href="/signup">Register</a></li>
+        {{/if}}
+      </ul>
+    </body>
+</html>
