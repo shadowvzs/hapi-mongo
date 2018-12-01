@@ -1,0 +1,14 @@
+Docker
+ip addr show = need package: iproute
+ping x.y.z.v = need package: iputils-ping
+sudo docker exec -it mongo /bin/bash = enter into deattached container and use terminal
+/usr/bin/mongo = enter to mongo console/terminal
+
+
+MongoDB
+show dbs - obvious :D
+user hapibb - create new database with hapidb name
+db.createCollection('tasks'); = create collection (name tasks) in current db (hapidb)
+db.tasks.insert({text:'Task 1'}); = insert a new object into the colllection(tasks)
+db.tasks.find() = list records in tasks collection
+db.tasks.find(idHash) = find that id in collection

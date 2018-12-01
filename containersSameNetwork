@@ -1,0 +1,29 @@
+Important notes:
+
+1. you must have a docker network, which you can create in host machine with a single line:
+- sudo docker network create mynetwork
+
+2. you must give permission for start.sh in project root and to mongoDB folder
+- sudo chmod 777 start.sh
+
+3. create entry point or launch manually the nodeJS app (ex. manually)
+- cd /home/project
+- nodemon
+or
+- node index
+
+# create network for docker on host
+# first i allways forget clean up containers after exit, so i note down this: --rm
+# so containers will run with same network
+# since container name is random if not defined, we can define with "--name aliasName imageName"
+# in mongoose you can use alias intead the ip like mongodb://mongo:27017/myDb
+docker network create mynetwork
+# sudo chmod 777 start.sh
+#chmod 777 -R mongoDB
+
+# start nodejs container - you will get ex. 178.18.0.3
+sudo docker run -v /home/shadowvzs/work/nodejs:/home/project -it -p 8000:8000 --network mynetwork --name nodejs nodejs:1 /bin/bash
+
+# start mongodb container: - you will get ex: 178.18.0.2 but alias is mongo when u setup in nodejs
+# we start mongodb with "mongod" but with "--bind_ip_all" param and expose the mongodb port
+sudo docker run -it --entrypoint 'mongod --bind_ip_all' --expose=27017 --network mynetwork --name mongo mongo:latest /bin/bash

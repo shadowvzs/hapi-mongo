@@ -1,0 +1,20 @@
+{
+  "name": "project",
+  "version": "1.0.0",
+  "description": "Simple hapi",
+  "main": "index.js",
+  "dependencies": {
+    "handlebars": "^4.0.12",
+    "hapi": "^17.8.1",
+    "inert": "^5.1.2",
+    "mongoose": "^5.3.14",
+    "nodemon": "^1.18.7",
+    "vision": "^5.4.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
