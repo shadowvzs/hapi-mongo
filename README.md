@@ -84,8 +84,23 @@
 * user hapibb - create new database with hapidb name
 * db.createCollection('tasks'); = create collection (name tasks) in current db (hapidb)
 * db.tasks.insert({text:'Task 1'}); = insert a new object into the colllection(tasks)
+* db.tasks.insertMany([{text:'Task 1'},{text:'Task 2'}]); = insert more document into collection
+* db.tasks.updateOne({ "favorites.artist": "Picasso" },{$set: { "favorites.food": "pie", type: 3 },$currentDate: { lastModified: true }}) = update the 1st (condition, set which will be updated,update lastModified field)
+* db.task.update() = same than above, update the 1st method
+* db.task.updateMany() = same like updateOne except this update every record
+* db.collection.replaceOne({ name: "abc" },{ name: "amy", age: 34, type: 2}) = replce first document where name is "abc"
 * db.tasks.find() = list records in tasks collection
 * db.tasks.find(idHash) = find that id in collection
+* db.tasks.remove( { status: "D" }, 1) = remove 1 record where status is "D"
+* db.tasks.remove( { status: "D" } ) = remove every record where status is "D"
+* db.tasks.remove( {} ) = remove every document from collection
+* db.tasks.deleteOne( { status: "D" } ) = delete first record where status is "D"
+* db.tasks.deleteMany( { status: "D" } ) = delete every record where status is "D"
+* db.tasks.deleteMany({}) = delete every document from collection
+* db.tasks.save() = save current document object
+* db.tasks.drop() = remove the collection (tasks)
+* other usefull stuff: findAndModify, findOneAndReplace(), findOneAndUpdate(), Geospatial Queries, copyTo, cloneCollection(), cloneDatabase()..........
+
 
 
 ## Helpful link
@@ -93,7 +108,11 @@
 *few thing outdated in that guide like happi connection, handle which use mongodb etc but could be a good start*
 
 * https://www.youtube.com/watch?v=2lprC0yYeFw
+* https://www.npmjs.com/package/hapi-auth-jwt2
+* https://github.com/hapijs/hapi-auth-cookie
 * https://medium.freecodecamp.org/how-to-setup-a-powerful-api-with-nodejs-graphql-mongodb-hapi-and-swagger-e251ac189649
+* https://docs.mongodb.com/v3.2/reference/sql-comparison/
+* https://docs.mongodb.com/v3.2/tutorial/update-documents/
 * https://www.tutorialspoint.com/mongodb/mongodb_environment.htm
 * https://mongoosejs.com/
 * https://success.docker.com/article/how-can-i-access-mongodb-container-from-another-container

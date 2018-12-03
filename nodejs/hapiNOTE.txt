@@ -1,0 +1,181 @@
+const Hapi = require('hapi');
+const HapiAuthBasic = require('hapi-auth-basic');
+const Vision = require('vision');
+const Handlebars = require('handlebars');
+const Inert = require('inert');
+const JWT2 = require('hapi-auth-jwt2');
+const JWT = require('jsonwebtoken');
+const Mongoose = require('mongoose');
+
+Mongoose.connect('mongodb://mongo:27017/hapidb', { useNewUrlParser: true }).
+  then(() => console.log('MongoDB Connected'))
+  .catch( err => console.log(err) );
+
+// create Task module/model (modelName, scheme)
+const Task = Mongoose.model('Task', {text: String});
+const User = Mongoose.model('User', {
+    firstName: String,
+    lastName:String,
+    email:String,
+    password:String
+});
+
+const secretKey = 'NeverShareYourSecret';
+const cookie_options = {
+    ttl: 365 * 24 * 60 * 60 * 1000, // expires a year from today
+    encoding: 'none',    // we already used JWT to encode
+    isSecure: false,     // warm & fuzzy feelings
+    isHttpOnly: true,    // prevent client alteration
+    clearInvalid: false, // remove invalid cookies
+    strictHeader: true,  // don't allow violations of RFC 6265
+    path: '/'            // set the cookie for all routes
+}
+
+// init server
+
+const server = Hapi.Server( {
+  port: 8000,
+  host: '0.0.0.0',
+  app: {} // with this object we can pass data to the async function and get with server.settings.app
+} );
+
+/*
+  // Few word about handlers :D
+
+  const handlerName = (request, h) {
+      // h = response toolkit
+      // return h.view(string, object);
+      // string - file name index.html
+      // object - data for handlebar
+      // so response will be rendered by template engine (see below servers.views)
+
+      // this function must be async if we use mongodb (must wait till we get the record from mongo)
+      // mongo find must be await
+      // else we get error because function not return anything
+
+      // this is another example with static data
+      // return h.view('tasks', {
+      //    task: [
+      //      {text: "task 1"},
+      //      {text: "task 2"},
+      //      {text: "task 3"},
+      //      {text: "task 4"},
+      //      {text: "task 5"},
+      //    ]
+      // });
+
+      // if we want return directly a file then we need Inert
+      // return h.file('./public/img/something.jpg');
+      // or return h.file('./views/index.html');
+
+      // we can return directly string too
+      // return "Hello, World";
+
+      // or we return with response and content type
+      // const response = h.response('<html><head><title>hi</title></head><body>Hello</body></html>');
+      // response.type("text/html");
+      // return response;
+
+      // return h.response('success')
+      //    .type('text/plain')
+      //    .header('X-Custom', 'some-value');
+
+      // dynamic route & data from url, ex:  path: "/user/{name}/{id}",
+      // return "Hello, "+request.params.name+"["+request.params.id+"]";
+
+      // request.auth.session.set(user[0]);
+      //  console.log(Object.keys(h), h.response().headers.credentials);
+
+  }
+*/
+
+const rootHandler = (request, h) => {
+    const credentials = request.auth.credentials || false,
+        userId = credentials ? credentials.id : false;
+        console.log(credentials);
+    return h.view('index', {
+        title: 'Index - ' + request.server.version,
+        errorMsg: null,
+        userId: userId
+    });
+};
+
+
+const taskHandler = async (request, h) => {
+  const credentials = request.auth.credentials || false,
+      userId = credentials ? credentials.id : false;
+    let tasks = await Task.find();
+    console.log(request.auth.credentials.id);
+    return h.view('tasks', {
+        title: 'Tasks - ' + request.server.version,
+        task: tasks,
+        userId: userId
+    }).header("authorization", request.headers.authorization);
+};
+
+const publicHandler = async (request, h) => {
+    const {dir = false, filename = false} = request.params,
+        path = `public/${dir}/${filename}`;
+    if (!dir || !filename) {
+        return;
+    }
+    console.log('public file server: '+path)
+    return h.file(path);
+};
+
+const validate = async function (decoded, request, h) {
+    // decoded form something like: {id: asdasdasd, iat: 123242342}
+    // do your checks to see if the person is valid
+    const user = await User.find({"_id": decoded.id}),
+        isValid = !!user.length;
+    if (isValid) {
+        h.authenticated({credentials: {user: decoded.id}});
+    }
+    return { isValid };
+};
+
+// start Server function
+const start = async () => {
+    try {
+        // register middlewares:
+        // - JWT2 (hapi-auth-jwt2 for token)
+        // - Vision (template engine helper, with vison we can more template engine type)
+        // - Inert (handle the static files like html/image/mp3/etc)
+        await server.register(JWT2);
+        await server.register(Vision);
+        await server.register(Inert);
+
+        server.auth.strategy('jwt', 'jwt', {
+          key: secretKey,                             // secret key for tokens
+          validate: validate,                         // validator function
+          verifyOptions: { algorithms: [ 'HS256' ] }  // enc type
+        });
+
+        server.auth.default('jwt');
+
+        // Vision help to use template engine, in our case we use Handlebars
+        // path is the directory path what views will use
+        server.views({
+            engines: { html: Handlebars },
+            relativeTo: __dirname,
+            path: __dirname+'/views'
+        });
+
+        // auth modes: 'required', 'optional', 'try', auth: 'jwt', false
+        // server.route({ method: 'GET', path: '/', handler: rootHandler, options: { auth:{ mode: 'optional'}} });
+        // server.route({ method: 'GET', path: '/public/{dir}/{filename}', handler: publicHandler, options: { auth: false} });
+        // server.route({ method: 'GET', path: '/tasks', handler: taskHandler, config: { auth: 'jwt' } });
+
+        // wait till server started
+        await server.start();
+
+        console.log(`Hapi server running at ${server.info.uri}`);
+    } catch (err) {
+        console.log("Hapi error starting server", err);
+        process.exit(1);
+    }
+
+};
+
+// invoke start function which will start the server
+start();

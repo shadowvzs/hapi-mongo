@@ -1,23 +1,39 @@
 const Hapi = require('hapi');
 const HapiAuthBasic = require('hapi-auth-basic');
-const Bcrypt = require('bcrypt');
 const Vision = require('vision');
 const Handlebars = require('handlebars');
 const Inert = require('inert');
-const mongoose = require('mongoose');
+const JWT2 = require('hapi-auth-jwt2');
+const JWT = require('jsonwebtoken');
+const Mongoose = require('mongoose');
 
-mongoose.connect('mongodb://mongo:27017/hapidb', { useNewUrlParser: true }).
-  then(() => console.log('MongoDB Connected'))
-  .catch( err => console.log(err) );
+Mongoose.connect('mongodb://mongo:27017/hapidb', { useNewUrlParser: true }).
+    then(() => console.log('MongoDB Connected'))
+    .catch( err => console.log(err) );
 
 // create Task module/model (modelName, scheme)
-const Task = mongoose.model('Task', {text: String});
-const User = mongoose.model('User', {
-    firstName: String,
-    lastName:String,
-    email:String,
-    password:String
+const Task = Mongoose.model('Task', {
+    userId: String,
+    created: Number,
+    text: String
 });
+const User = Mongoose.model('User', {
+    firstName: String,
+    lastName: String,
+    email: String,
+    password: String
+});
+
+const secretKey = 'NeverShareYourSecret';
+const cookie_options = {
+    ttl: 365 * 24 * 60 * 60 * 1000, // expires a year from today
+    encoding: 'none',    // we already used JWT to encode
+    isSecure: false,     // warm & fuzzy feelings
+    isHttpOnly: true,    // prevent client alteration
+    clearInvalid: false, // remove invalid cookies
+    strictHeader: true,  // don't allow violations of RFC 6265
+    path: '/'            // set the cookie for all routes
+}
 
 // init server
 
@@ -27,59 +43,33 @@ const server = Hapi.Server( {
   app: {} // with this object we can pass data to the async function and get with server.settings.app
 } );
 
-/*
-  // Few word about handlers :D
+const getUserId = request => request.auth.credentials
+                  ? (request.auth.credentials.id) || false
+                  : false;
 
-  const handlerName = (request, h) {
-      // h = response toolkit
-      // return h.view(string, object);
-      // string - file name index.html
-      // object - data for handlebar
-      // so response will be rendered by template engine (see below servers.views)
+//----------------------- extending Handlebars ------------------
 
-      // this function must be async if we use mongodb (must wait till we get the record from mongo)
-      // mongo find must be await
-      // else we get error because function not return anything
+Handlebars.registerHelper('equal', function(lvalue, rvalue, options) {
+    if (arguments.length < 3)
+        throw new Error("Handlebars Helper equal needs 2 parameters");
+        console.log(lvalue, rvalue);
+    if( lvalue!=rvalue ) {
+        return options.inverse(this);
+    } else {
+        return options.fn(this);
+    }
+});
 
-      // this is another example with static data
-      // return h.view('tasks', {
-      //    task: [
-      //      {text: "task 1"},
-      //      {text: "task 2"},
-      //      {text: "task 3"},
-      //      {text: "task 4"},
-      //      {text: "task 5"},
-      //    ]
-      // });
+//--------------------------------------------------
 
-      // if we want return directly a file then we need Inert
-      // return h.file('./public/img/something.jpg');
-      // or return h.file('./views/index.html');
 
-      // we can return directly string too
-      // return "Hello, World";
-
-      // or we return with response and content type
-      // const response = h.response('<html><head><title>hi</title></head><body>Hello</body></html>');
-      // response.type("text/html");
-      // return response;
-
-      // return h.response('success')
-      //    .type('text/plain')
-      //    .header('X-Custom', 'some-value');
-
-      // dynamic route & data from url, ex:  path: "/user/{name}/{id}",
-      // return "Hello, "+request.params.name+"["+request.params.id+"]";
-
-  }
-*/
+//----------------------- Handlers ------------------
 
 const rootHandler = (request, h) => {
-    const userId = false
     return h.view('index', {
         title: 'Index - ' + request.server.version,
         errorMsg: null,
-        userId: (userId || false)
+        userId: getUserId(request)
     });
 };
 
@@ -90,6 +80,12 @@ const loginHandler = (request, h) => {
     });
 };
 
+const logoutHandler = (request, h) => {
+    const expiration_options = JSON.parse(JSON.stringify(cookie_options));
+    expiration_options['ttl'] = 1;
+    return h.redirect('/').state("token", "", expiration_options);
+};
+
 const signUpHandler = (request, h) => {
     return h.view('signup', {
         title: 'SignUp - ' + request.server.version,
@@ -97,20 +93,25 @@ const signUpHandler = (request, h) => {
     });
 };
 
-const loginPostHandler = (request, h) => {
-    console.log('login', request.payload);
-    const errorMsg = "";
-    //const user = await User.find();
-    //request.auth.session.set(user[0]);
-    //  console.log(Object.keys(h), h.response().headers.credentials);
-    return h.redirect('/tasks');
+const loginPostHandler = async (request, h) => {
+    const { email = false, password = false } = request.payload,
+          credentials = { email, password },
+          user = await User.find({email, password});
+
+    if (user.length != 1) {
+        return h.view('login', {
+            title: 'Login - ' + request.server.version,
+            errorMsg: "Wrong email or password!",
+        });
+    }
+
+    const token = JWT.sign({"id":user[0].id}, secretKey);
+    return h.redirect('/tasks').header("authorization", token).state("token", token, cookie_options);
 };
-/*
-    return h.authenticated({credentials :{user : request.payload.username}});
-    return h.unauthenticated({err : "Authentication failed!!!"});
-*/
+
 
 const signUpPostHandler = async (request, h) => {
+
   const {
         firstName = null,
         lastName = null,
@@ -120,7 +121,7 @@ const signUpPostHandler = async (request, h) => {
     missing = (!firstName || !lastName || !email || !password);
 
     let emailExist = [];
-    // we skip email check if we dont have all required data
+
     if (!missing) {
         emailExist = await User.find({"email":email});
     }
@@ -139,12 +140,11 @@ const signUpPostHandler = async (request, h) => {
         password
     });
 
-    // if it was saved then saved var and newUser have same value
-    // all user data (inc the new id)
+    // if it was saved then it will be the saved user data (inc the new id)
     const saved = await newUser.save();
 
     if (saved) {
-        return h.redirect('/users');
+        return h.redirect('/login');
     }
 
     return h.view('signup', {
@@ -154,85 +154,120 @@ const signUpPostHandler = async (request, h) => {
 };
 
 const taskHandler = async (request, h) => {
-    let tasks = await Task.find();
+    const userId = getUserId(request),
+        tasks = await Task.find({"userId":userId});
+
     return h.view('tasks', {
-        task: tasks
+        title: 'Tasks - ' + request.server.version,
+        task: tasks,
+        userId: userId
+    }).header("authorization", request.headers.authorization);
+};
+
+const taskAddHandler = async (request, h) => {
+    const userId = getUserId(request),
+        task = request.payload.task;
+    let newTask = new Task({
+        userId: userId,
+        text: task,
+        created: ~~(Date.now()/1000),
     });
+
+    const saved = await newTask.save();
+    if (!saved) {
+        console.log('Error task not saved');
+    }
+    return h.redirect('/tasks');
 };
 
-const validate = async (request, email, password, h) => {
-    console.log('iuhi');
-    if (email === 'help') {
-        return { response: h.redirect('https://hapijs.com/help') };     // custom response
+const taskDeleteHandler = async (request, h) => {
+    const userId = getUserId(request),
+        taskId = request.params.taskId;
+    if (taskId && userId) {
+        tasks = await Task.find({ _id: taskId, userId: userId });
+        if (tasks.length > 0) {
+            await tasks[0].remove();
+        }
     }
-
-    const user = await User.find({"email":email});
-    if (user.length == 0) {
-        return { credentials: null, isValid: false };
-    }
-    console.log('iuhi');
-    const isValid = await Bcrypt.compare(password, user.password);
-    const credentials = { id: user.id, name: user.name };
-    console.log(credentials);
-    return { isValid, credentials };
+    return h.redirect('/tasks');
 };
 
-// start Server
+const userHandler = async (request, h) => {
+    const userId = getUserId(request),
+        users = await User.find();
+    return h.view('users', {
+        title: 'Users - ' + request.server.version,
+        task: users,
+        userId: userId
+    }).header("authorization", request.headers.authorization);
+};
+
+const userEditHandler = async (request, h) => {
+    const userId = getUserId(request),
+        user = await User.find({"_id": userId});
+    if (userId != user[0],id) {
+        return h.redirect('/users');
+    }
+    return h.view('users', {
+        title: 'Users - ' + request.server.version,
+        user: user[0],
+        userId: userId
+    }).header("authorization", request.headers.authorization);
+};
+
+const userUpdateHandler = async (request, h) => {
+    // update
+};
+
+const publicHandler = async (request, h) => {
+    const {dir = false, filename = false} = request.params,
+        path = `public/${dir}/${filename}`;
+    return (dir && filename) ? h.file(path) : null;
+};
+
+//-----------------------------------------------------
+
+const validate = async function (decoded, request, h) {
+    const user = await User.find({"_id": decoded.id}),
+        isValid = !!user.length;
+    (isValid) && (h.authenticated({credentials: {user: decoded.id}}));
+    return { isValid };
+};
+
 const start = async () => {
     try {
-        // register middlewares:
-        // - HapiAuthBasic (basic auth system for hapi)
-        // - Vision (template engine helper, with vison we can more template engine type)
-        // - Inert (handle the static files like html/image/mp3/etc)
-        await server.register(HapiAuthBasic);
+        await server.register(JWT2);
         await server.register(Vision);
         await server.register(Inert);
 
-        const scheme = function (server, options) {
+        server.auth.strategy('jwt', 'jwt', {
+          key: secretKey,
+          validate: validate,
+          verifyOptions: { algorithms: [ 'HS256' ] }
+        });
 
-            return {
-                api: {
-                    settings: {
-                        x: 5
-                    }
-                },
-                authenticate: function (request, h) {
+        server.auth.default('jwt');
 
-                    const authorization = request.headers.authorization;
-                    console.log(request.headers);
-                    if (!authorization) {
-                      console.log('nnn----');
-                      //  throw Boom.unauthorized(null, 'Custom');
-
-                    }
-                    console.log('----');
-                    return h.authenticated({ credentials: { user: 'john' } });
-                }
-            };
-        };
-        server.auth.scheme('custom', scheme);
-        server.auth.strategy('default', 'custom');
-        server.auth.default('default');
-
-        //server.auth.scheme('custom', scheme);
-        //server.auth.strategy('simple', 'basic', { validate });
-        //server.auth.default('simple');
-
-        // Vision help to use template engine, in our case we use Handlebars
-        // path is the directory path what views will use
         server.views({
             engines: { html: Handlebars },
             relativeTo: __dirname,
             path: __dirname+'/views'
         });
 
-        server.route({ method: 'GET', path: '/', handler: rootHandler, options: { auth: false} });
+        // auth modes: 'required', 'optional', 'try', auth: 'jwt', false
+        server.route({ method: 'GET', path: '/', handler: rootHandler, options: { auth:{ mode: 'optional'}} });
+        server.route({ method: 'GET', path: '/public/{dir}/{filename}', handler: publicHandler, options: { auth: false} });
         server.route({ method: 'GET', path: '/login', handler: loginHandler, options: { auth: false} });
+        server.route({ method: 'GET', path: '/logout', handler: logoutHandler, config: { auth: 'jwt' } });
         server.route({ method: 'GET', path: '/signup', handler: signUpHandler, options: { auth: false} });
-        server.route({ method: 'POST', path: '/login', handler: loginPostHandler, options: { auth: {mode:'try'}} });
+        server.route({ method: 'POST', path: '/login', handler: loginPostHandler, options: { auth: false} });
         server.route({ method: 'POST', path: '/signup', handler: signUpPostHandler, options: { auth: false} });
-        server.route({ method: 'GET', path: '/tasks', handler: taskHandler });
-        server.route({ method: 'GET', path: '/users', handler: taskHandler });
+        server.route({ method: 'GET', path: '/tasks', handler: taskHandler, config: { auth: 'jwt' } });
+        server.route({ method: 'POST', path: '/tasks', handler: taskAddHandler, config: { auth: 'jwt' } });
+        server.route({ method: 'GET', path: '/tasks/delete/{taskId}', handler: taskDeleteHandler, config: { auth: 'jwt' } });
+        server.route({ method: 'GET', path: '/users', handler: userHandler, config: { auth: 'jwt' }  });
+        server.route({ method: 'GET', path: '/users/{{id}}', handler: userEditHandler, config: { auth: 'jwt' }  });
+        server.route({ method: 'POST', path: '/users/{{id}}', handler: userUpdateHandler, config: { auth: 'jwt' }  });
 
         // wait till server started
         await server.start();

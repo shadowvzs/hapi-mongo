@@ -1,0 +1,93 @@
+body {
+    background: #c94b4b;
+    background: -webkit-linear-gradient(to right, #4b134f, #c94b4b);
+    background: linear-gradient(to right, #4b134f, #c94b4b);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    text-decoration: none;
+}
+
+.menu {
+    background-color: rgba(0, 0, 0, 0.5);
+    text-align: center;
+}
+.menu li {
+    border: 1px solid #fff;
+    border-radius: 4px;
+    display: inline-block;
+    transition: 0.3s ease;
+    color: rgba(0, 0, 0, 0.8);
+    background-color: rgba(255, 255, 255, 0.8);
+    margin: 4px 0;
+}
+
+.menu li a {
+    color: rgba(0, 0, 0, 0.8);
+    display: inline-block;
+    padding: 10px 20px;
+}
+
+.menu li:hover {
+    background-color: rgba(255, 255, 255, 1);
+}
+
+.menu li:hover a {
+    color: rgba(0, 0, 0, 1);
+}
+
+main {
+    position: relative;
+    display: inline-block;
+    top: 20px;
+    left: 50%;
+    text-align: center;
+    min-width: 240px;
+    transform: translatex(-50%);
+    padding: 20px;
+    border: 1px solid rgba(0, 0, 0, 0.5);
+    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 3px double rgba(0,0,0,0.3);
+}
+
+main h1 {
+    font-size: 40px;
+    background: -webkit-linear-gradient(#77f, #007);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5em;
+}
+
+form {
+    display: block;
+    text-align: center;
+}
+
+form input:not([type="submit"]) {
+    display: block;
+    padding: 5px;
+    margin: 0 auto 5px auto;
+    background-color: rgba(255,255,255,0.5);
+    color: rgba(0,0,0,0.5);
+    border-color: rgba(150,150,150,0.5);
+    border-radius: 3px;
+    transition: 0.3s ease;
+    width: 100%;
+}
+
+form input:focus:not([type="submit"]) {
+    background-color: rgba(255,255,255,0.9);
+    color: rgba(0,0,0,0.9);
+    border-color: rgba(150,150,150,0.9);
+}
+
+form input[type="submit"] {
+    padding: 5px;
+    margin-top: 20px;
+    color: black;
+}

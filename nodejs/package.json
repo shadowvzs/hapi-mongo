@@ -4,14 +4,11 @@
   "description": "Simple hapi",
   "main": "index.js",
   "dependencies": {
-    "bcrypt": "^3.0.2",
     "handlebars": "^4.0.12",
     "hapi": "^17.8.1",
-    "hapi-auth-basic": "^5.0.0",
     "hapi-auth-jwt2": "^8.2.0",
     "inert": "^5.1.2",
     "mongoose": "^5.3.14",
-    "nodemon": "^1.18.7",
     "vision": "^5.4.3"
   },
   "devDependencies": {},
