@@ -1,6 +1,10 @@
 # hapi 17.8 (nodeJS 10.3) container + MongoDB 4.0 container
 
+* video: https://www.youtube.com/watch?v=gqQ_bPn8niY
+
 * you need the nodeJS and mongo containers (you can pull them)
+    * docker pull mongo
+    * docker pull ubuntu - then i installed nodejs & npm but you can pull nodejs directly too
 * and files from this repo
 
 ## Important steps for run nodeJS container
