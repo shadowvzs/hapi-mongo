@@ -1,13 +1,22 @@
 const Hapi = require('hapi');
-const HapiAuthBasic = require('hapi-auth-basic');
 const Vision = require('vision');
 const Handlebars = require('handlebars');
 const Inert = require('inert');
 const JWT2 = require('hapi-auth-jwt2');
 const JWT = require('jsonwebtoken');
 const Mongoose = require('mongoose');
+const mongo = {
+    host: "mongo",
+    port: "27017",
+    db: "hapidb",
+    options: { useNewUrlParser: true }
+};
+const hapi = {
+    host: "0.0.0.0",
+    port: 8000
+}
 
-Mongoose.connect('mongodb://mongo:27017/hapidb', { useNewUrlParser: true }).
+Mongoose.connect(`mongodb://${mongo.host}:${mongo.port}/${mongo.db}`, mongo.options).
     then(() => console.log('MongoDB Connected'))
     .catch( err => console.log(err) );
 
@@ -17,6 +26,7 @@ const Task = Mongoose.model('Task', {
     created: Number,
     text: String
 });
+
 const User = Mongoose.model('User', {
     firstName: String,
     lastName: String,
@@ -26,21 +36,19 @@ const User = Mongoose.model('User', {
 
 const secretKey = 'NeverShareYourSecret';
 const cookie_options = {
-    ttl: 365 * 24 * 60 * 60 * 1000, // expires a year from today
-    encoding: 'none',    // we already used JWT to encode
-    isSecure: false,     // warm & fuzzy feelings
-    isHttpOnly: true,    // prevent client alteration
-    clearInvalid: false, // remove invalid cookies
-    strictHeader: true,  // don't allow violations of RFC 6265
-    path: '/'            // set the cookie for all routes
+    ttl: 365 * 24 * 60 * 60 * 1000,
+    encoding: 'none',
+    isSecure: false,
+    isHttpOnly: true,
+    clearInvalid: false,
+    strictHeader: true,
+    path: '/'
 }
 
-// init server
-
 const server = Hapi.Server( {
-  port: 8000,
-  host: '0.0.0.0',
-  app: {} // with this object we can pass data to the async function and get with server.settings.app
+    host: hapi.host,
+    port: hapi.port,
+    app: {}
 } );
 
 const getUserId = request => request.auth.credentials
@@ -52,7 +60,6 @@ const getUserId = request => request.auth.credentials
 Handlebars.registerHelper('equal', function(lvalue, rvalue, options) {
     if (arguments.length < 3)
         throw new Error("Handlebars Helper equal needs 2 parameters");
-        console.log(lvalue, rvalue);
     if( lvalue!=rvalue ) {
         return options.inverse(this);
     } else {
@@ -60,10 +67,7 @@ Handlebars.registerHelper('equal', function(lvalue, rvalue, options) {
     }
 });
 
-//--------------------------------------------------
-
-
-//----------------------- Handlers ------------------
+//----------------------- Route Handlers ------------------
 
 const rootHandler = (request, h) => {
     return h.view('index', {
@@ -112,7 +116,7 @@ const loginPostHandler = async (request, h) => {
 
 const signUpPostHandler = async (request, h) => {
 
-  const {
+    const {
         firstName = null,
         lastName = null,
         email = null,
@@ -121,7 +125,6 @@ const signUpPostHandler = async (request, h) => {
     missing = (!firstName || !lastName || !email || !password);
 
     let emailExist = [];
-
     if (!missing) {
         emailExist = await User.find({"email":email});
     }
@@ -140,9 +143,7 @@ const signUpPostHandler = async (request, h) => {
         password
     });
 
-    // if it was saved then it will be the saved user data (inc the new id)
     const saved = await newUser.save();
-
     if (saved) {
         return h.redirect('/login');
     }
@@ -205,10 +206,10 @@ const userHandler = async (request, h) => {
 const userEditHandler = async (request, h) => {
     const userId = getUserId(request),
         user = await User.find({"_id": userId});
-    if (userId != user[0],id) {
+    if (userId != user[0].id) {
         return h.redirect('/users');
     }
-    return h.view('users', {
+    return h.view('userEdit', {
         title: 'Users - ' + request.server.version,
         user: user[0],
         userId: userId
@@ -216,7 +217,19 @@ const userEditHandler = async (request, h) => {
 };
 
 const userUpdateHandler = async (request, h) => {
-    // update
+    const userId = getUserId(request),
+        pl = request.payload;
+    if (userId == request.params.id) {
+        const saved = await User.updateMany(
+            {_id:userId},
+            pl,
+            {new: true}
+        )
+        if (!saved.ok) {
+            console.log("Error, user not updated")
+        }
+    }
+    return h.redirect('/users');
 };
 
 const publicHandler = async (request, h) => {
@@ -225,7 +238,7 @@ const publicHandler = async (request, h) => {
     return (dir && filename) ? h.file(path) : null;
 };
 
-//-----------------------------------------------------
+//------------------- Validator (JWT) on routes ----------------------------------
 
 const validate = async function (decoded, request, h) {
     const user = await User.find({"_id": decoded.id}),
@@ -233,6 +246,8 @@ const validate = async function (decoded, request, h) {
     (isValid) && (h.authenticated({credentials: {user: decoded.id}}));
     return { isValid };
 };
+
+//------------------- Start/Init function ----------------------------------
 
 const start = async () => {
     try {
@@ -254,11 +269,11 @@ const start = async () => {
             path: __dirname+'/views'
         });
 
-        // auth modes: 'required', 'optional', 'try', auth: 'jwt', false
+        //--------------------------- Routes --------------------------
         server.route({ method: 'GET', path: '/', handler: rootHandler, options: { auth:{ mode: 'optional'}} });
         server.route({ method: 'GET', path: '/public/{dir}/{filename}', handler: publicHandler, options: { auth: false} });
         server.route({ method: 'GET', path: '/login', handler: loginHandler, options: { auth: false} });
-        server.route({ method: 'GET', path: '/logout', handler: logoutHandler, config: { auth: 'jwt' } });
+        server.route({ method: 'GET', path: '/logout', handler: logoutHandler, config: { auth:{ mode: 'try'}}  });
         server.route({ method: 'GET', path: '/signup', handler: signUpHandler, options: { auth: false} });
         server.route({ method: 'POST', path: '/login', handler: loginPostHandler, options: { auth: false} });
         server.route({ method: 'POST', path: '/signup', handler: signUpPostHandler, options: { auth: false} });
@@ -266,8 +281,8 @@ const start = async () => {
         server.route({ method: 'POST', path: '/tasks', handler: taskAddHandler, config: { auth: 'jwt' } });
         server.route({ method: 'GET', path: '/tasks/delete/{taskId}', handler: taskDeleteHandler, config: { auth: 'jwt' } });
         server.route({ method: 'GET', path: '/users', handler: userHandler, config: { auth: 'jwt' }  });
-        server.route({ method: 'GET', path: '/users/{{id}}', handler: userEditHandler, config: { auth: 'jwt' }  });
-        server.route({ method: 'POST', path: '/users/{{id}}', handler: userUpdateHandler, config: { auth: 'jwt' }  });
+        server.route({ method: 'GET', path: '/user/{id}', handler: userEditHandler, config: { auth: 'jwt' }  });
+        server.route({ method: 'POST', path: '/user/{id}', handler: userUpdateHandler, config: { auth: 'jwt' }  });
 
         // wait till server started
         await server.start();

@@ -1,7 +1,9 @@
 # hapi 17.8 (nodeJS 10.3) container + MongoDB 4.0 container
 
+* you need the nodeJS and mongo containers (you can pull them)
+* and files from this repo
 
-## Important steps
+## Important steps for run nodeJS container
 
 * You must run download the packages with npm which was used in package.json
     * npm install
@@ -15,7 +17,8 @@
 
 * create entry point or launch manually the nodeJS app (ex. manually)
     * cd /home/project
-    * nodemon or node index
+    * node index
+    * (optional: you can use nodemon for run hapi server, if you are in project folder, type "nodemon")
 
 
 ## How it work:
@@ -81,7 +84,7 @@
 * mongos - mongodb shard, is a routing service for MongoDB shard configurations, located in usr/bin
 * mongod - this start the database in image, located in usr/bin
 * show dbs - obvious :D
-* user hapibb - create new database with hapidb name
+* use hapidb - create new /select database (name: hapidb)
 * db.createCollection('tasks'); = create collection (name tasks) in current db (hapidb)
 * db.tasks.insert({text:'Task 1'}); = insert a new object into the colllection(tasks)
 * db.tasks.insertMany([{text:'Task 1'},{text:'Task 2'}]); = insert more document into collection

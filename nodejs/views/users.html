@@ -25,12 +25,11 @@
 
         <main>
             <h1> Users </h1>
-            {{userId}}
             <ul>
               {{#each task}}
                   <li>{{firstName}} {{lastName}}
                       {{#equal id ../userId}}
-                      <a href="/user/edit/{{id}}"> Edit </a>
+                      <a href="/user/{{id}}"> Edit </a>
                   {{/equal}}
                   </li>
               {{/each}}
