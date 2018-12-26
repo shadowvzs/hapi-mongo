@@ -48,6 +48,7 @@
 
 ### Docker
 * ip addr show = need package: iproute
+* --privileged = if cannot access the host network from container, need run container with this flag 
 * ping x.y.z.v = need package: iputils-ping
 * sudo docker exec -it mongo /bin/bash = enter into deattached container and use terminal
 * /usr/bin/mongo = enter to mongo console/terminal
